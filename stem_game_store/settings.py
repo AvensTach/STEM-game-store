@@ -42,7 +42,10 @@ INSTALLED_APPS = [
     'games.apps.GamesConfig',
     "rest_framework",
     'corsheaders',
-    'users.apps.UsersConfig'
+    'users.apps.UsersConfig',
+    'orders.apps.OrdersConfig',
+    'library.apps.LibraryConfig',
+    'subscriptions.apps.SubscriptionsConfig'
 ]
 
 MIDDLEWARE = [
