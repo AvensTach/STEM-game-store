@@ -23,6 +23,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # All our API endpoints will be prefixed with /api/
     path('api/', include('games.urls')),
+    # User and authentication API endpoints will be at /api/auth/...
+    path('api/auth/', include('users.urls')),
 ]
 
 # Configuration for serving media files during development (when DEBUG=True)
