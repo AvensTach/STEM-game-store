@@ -21,5 +21,7 @@ class PlatformAdmin(admin.ModelAdmin):
 class GameAdmin(admin.ModelAdmin):
     list_display = ('title', 'category', 'developer', 'price')
     prepopulated_fields = {'slug': ('title',)}
-    list_filter = ('category', 'genres', 'platforms')
-    search_fields = ('title', 'developer__name')
+    list_filter = ('category', 'developer')
+    search_fields = ('title',)
+    # Use filter_horizontal to create a comfortable UI for selecting multiple genres/platforms
+    filter_horizontal = ('genres', 'platforms')

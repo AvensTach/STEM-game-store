@@ -1,25 +1,44 @@
 from rest_framework import serializers
-from .models import Category, Game, SubscriptionPlan
+from .models import Category, Developer, Genre, Platform, Game
+
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['id', 'name', 'slug', 'description']
+        fields = ['id', 'name', 'slug']
+
+
+class DeveloperSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Developer
+        fields = ['id', 'name', 'slug']
+
+
+class GenreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Genre
+        fields = ['id', 'name', 'slug']
+
+
+class PlatformSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Platform
+        fields = ['id', 'name', 'slug']
+
 
 class GameSerializer(serializers.ModelSerializer):
-    # Вкладаємо серіалізатор категорії, щоб React отримував відразу всю інформацію
-    # про категорію, а не лише її ID (наприклад, для відображення назви)
+    # Nested serializers for relational data
     category = CategorySerializer(read_only=True)
+    developer = DeveloperSerializer(read_only=True)
+
+    # many=True is required for ManyToMany fields
+    genres = GenreSerializer(many=True, read_only=True)
+    platforms = PlatformSerializer(many=True, read_only=True)
 
     class Meta:
         model = Game
         fields = [
             'id', 'title', 'slug', 'category', 'developer',
-            'price', 'available_in_subscription', 'description',
-            'cover_image', 'release_date'
+            'genres', 'platforms', 'price', 'minimum_subscription_tier',
+            'description', 'cover_image_url', 'release_date'
         ]
-
-class SubscriptionPlanSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SubscriptionPlan
-        fields = ['id', 'name', 'price', 'duration_days', 'description']

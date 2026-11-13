@@ -1,19 +1,28 @@
 from rest_framework import viewsets
-from .models import Category, Game, SubscriptionPlan
-from .serializers import CategorySerializer, GameSerializer, SubscriptionPlanSerializer
+from .models import Category, Developer, Game
+from .serializers import CategorySerializer, DeveloperSerializer, GameSerializer
+
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    lookup_field = 'slug'  # Allows querying the category by slug in the URL (e.g., /api/categories/action/)
-
-class GameViewSet(viewsets.ReadOnlyModelViewSet):
-    # Use select_related to optimize database queries since
-    # we are fetching category data alongside the game
-    queryset = Game.objects.select_related('category').all()
-    serializer_class = GameSerializer
     lookup_field = 'slug'
 
-class SubscriptionPlanViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = SubscriptionPlan.objects.filter(is_active=True)
-    serializer_class = SubscriptionPlanSerializer
+
+class DeveloperViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Developer.objects.all()
+    serializer_class = DeveloperSerializer
+    lookup_field = 'slug'
+
+
+class GameViewSet(viewsets.ReadOnlyModelViewSet):
+    # select_related is for ForeignKey (1-to-Many)
+    # prefetch_related is for ManyToMany relationships
+    queryset = Game.objects.select_related(
+        'category', 'developer', 'minimum_subscription_tier'
+    ).prefetch_related(
+        'genres', 'platforms'
+    ).all()
+
+    serializer_class = GameSerializer
+    lookup_field = 'slug'
