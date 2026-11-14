@@ -1,10 +1,11 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from django.utils import timezone
-from datetime import timedelta
 from .models import SubscriptionTier, UserSubscription
-from .serializers import SubscriptionTierSerializer, UserSubscriptionSerializer
+from .serializers import SubscriptionTierSerializer
+from rest_framework import views, status, permissions
+from dateutil.relativedelta import relativedelta
+
 
 
 class SubscriptionTierListView(generics.ListAPIView):
@@ -12,14 +13,6 @@ class SubscriptionTierListView(generics.ListAPIView):
     queryset = SubscriptionTier.objects.filter(is_active=True).order_by('access_level')
     serializer_class = SubscriptionTierSerializer
     permission_classes = [permissions.AllowAny]
-
-
-# subscriptions/views.py
-from rest_framework import views, status, permissions
-from rest_framework.response import Response
-from django.utils import timezone
-from dateutil.relativedelta import relativedelta
-from .models import SubscriptionTier, UserSubscription
 
 class SubscribeView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]

@@ -1,7 +1,7 @@
 from rest_framework import views, status, permissions
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from .models import Cart, CartItem
+from .models import Cart, CartItem, Purchase
 from .serializers import CartSerializer, CartItemSerializer
 
 
@@ -45,3 +45,27 @@ class CartItemDeleteView(views.APIView):
 
         # Return the updated cart after deletion
         return Response(CartSerializer(cart).data, status=status.HTTP_200_OK)
+
+
+class CheckoutView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        cart = get_object_or_404(Cart, user=request.user)
+        items = cart.items.all()
+
+        if not items.exists():
+            return Response({"error": "Cart is empty"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create a Purchase record for every game in the cart
+        for item in items:
+            Purchase.objects.get_or_create(
+                user=request.user,
+                game=item.game,
+                defaults={'price_paid': item.game.price}
+            )
+
+        # Empty the cart after successful checkout
+        items.delete()
+
+        return Response({"message": "Games successfully purchased!"}, status=status.HTTP_200_OK)
