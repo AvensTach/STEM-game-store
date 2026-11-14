@@ -36,6 +36,7 @@ class Platform(models.Model):
 class Game(models.Model):
     title = models.CharField(max_length=200, db_index=True, verbose_name="Game Title")
     slug = models.SlugField(max_length=200, unique=True, verbose_name="URL Slug")
+    is_featured = models.BooleanField(default=False)
 
     # 1-to-Many relations
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="games")

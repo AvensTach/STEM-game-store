@@ -34,7 +34,7 @@ export default function GameDetail({ user }) {
   const hasAccess = gameTierLevel && userTierLevel >= gameTierLevel;
 
   return (
-    <div className="max-w-6xl mx-auto pb-12">
+    <div className="max-w-[1600px] w-full mx-auto pb-12">
       {/* Back Button */}
       <button
         onClick={() => navigate(-1)}

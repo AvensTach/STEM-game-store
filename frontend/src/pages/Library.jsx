@@ -49,7 +49,7 @@ export default function Library() {
   if (loading) return <p className="text-center text-slate-400 mt-24">Loading your library...</p>;
 
   return (
-    <div className="max-w-6xl mx-auto py-8">
+    <div className="max-w-[1600px] w-full mx-auto py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight">My Library</h1>

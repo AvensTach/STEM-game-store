@@ -37,7 +37,8 @@ class GameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Game
         fields = [
-            'id', 'title', 'slug', 'category', 'developer',
-            'genres', 'platforms', 'price', 'minimum_subscription_tier',
-            'description', 'cover_image_url', 'release_date'
+            'id', 'title', 'slug', 'description', 'release_date',
+            'price', 'cover_image_url', 'developer', 'category',
+            'genres', 'platforms', 'minimum_subscription_tier',
+            'is_featured'
         ]

@@ -1,13 +1,14 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import CategoryViewSet, DeveloperViewSet, GameViewSet
+from .views import CategoryViewSet, DeveloperViewSet, GameViewSet, GenreViewSet, PlatformViewSet
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet)
 router.register(r'developers', DeveloperViewSet)
-router.register(r'games', GameViewSet)
+router.register(r'genres', GenreViewSet)
+router.register(r'platforms', PlatformViewSet)
+router.register(r'games', GameViewSet, basename='game')
 
 urlpatterns = [
-    # This single line now handles /api/games/ AND /api/games/<id>/
     path('', include(router.urls)),
 ]
