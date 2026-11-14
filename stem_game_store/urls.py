@@ -25,6 +25,9 @@ urlpatterns = [
     path('api/', include('games.urls')),
     # User and authentication API endpoints will be at /api/auth/...
     path('api/auth/', include('users.urls')),
+    path('api/subscriptions/', include('subscriptions.urls')),
+    path('api/orders/', include('orders.urls')),
+    path('api/library/', include('library.urls')), # New dedicated library route
 ]
 
 # Configuration for serving media files during development (when DEBUG=True)

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Category, Developer, Genre, Platform, Game
+from subscriptions.serializers import SubscriptionTierSerializer
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -27,13 +28,11 @@ class PlatformSerializer(serializers.ModelSerializer):
 
 
 class GameSerializer(serializers.ModelSerializer):
-    # Nested serializers for relational data
     category = CategorySerializer(read_only=True)
     developer = DeveloperSerializer(read_only=True)
-
-    # many=True is required for ManyToMany fields
     genres = GenreSerializer(many=True, read_only=True)
     platforms = PlatformSerializer(many=True, read_only=True)
+    minimum_subscription_tier = SubscriptionTierSerializer(read_only=True)
 
     class Meta:
         model = Game

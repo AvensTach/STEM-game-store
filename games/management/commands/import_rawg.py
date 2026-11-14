@@ -1,6 +1,7 @@
 import os
 import requests
 import random
+import time
 from decimal import Decimal
 from datetime import datetime
 from django.core.management.base import BaseCommand
@@ -9,27 +10,20 @@ import environ
 
 
 class Command(BaseCommand):
-    help = 'Imports 100 games from the RAWG API with smart pricing'
+    help = 'Imports 100 games from the RAWG API with real descriptions and developers'
 
     def generate_smart_price(self, rating, ratings_count):
-        # Logic to assign realistic industry-standard pricing based on game reception and popularity
         if rating >= 4.5 and ratings_count > 2000:
-            # High rating and massive popularity usually indicate a premium AAA title
             price = random.choice([49.99, 59.99, 69.99])
         elif rating >= 4.0 and ratings_count > 500:
-            # Solid hits and popular mid-tier games
             price = random.choice([29.99, 39.99, 49.99])
         elif rating >= 3.0:
-            # Average games or older titles
             price = random.choice([14.99, 19.99, 24.99])
         else:
-            # Niche, poorly rated, or very small indie games
             price = random.choice([4.99, 9.99])
-
         return Decimal(str(price))
 
     def handle(self, *args, **kwargs):
-        # Initialize environ to read the API key from .env
         env = environ.Env()
         api_key = env('RAWG_API_KEY', default=None)
 
@@ -37,23 +31,18 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR('RAWG_API_KEY not found in environment variables.'))
             return
 
-        # Start with the first page
         url = f'https://api.rawg.io/api/games?key={api_key}&page_size=40&ordering=-added'
-
         TARGET_IMPORT_COUNT = 100
         games_imported = 0
 
-        # Create default category and developer for API records that lack them
         default_category, _ = Category.objects.get_or_create(name="General", slug="general")
         default_developer, _ = Developer.objects.get_or_create(name="Unknown Developer", slug="unknown-developer")
 
-        self.stdout.write('Starting import process for 100 games...')
+        self.stdout.write(
+            'Starting import process. This will take a moment as it fetches detailed data for each game...')
 
-        # Loop through paginated API responses until we hit our target
         while url and games_imported < TARGET_IMPORT_COUNT:
-            self.stdout.write(f'Fetching data from: {url}')
             response = requests.get(url)
-
             if response.status_code != 200:
                 self.stdout.write(self.style.ERROR(f'Failed to fetch data: HTTP {response.status_code}'))
                 break
@@ -61,7 +50,6 @@ class Command(BaseCommand):
             data = response.json()
 
             for item in data.get('results', []):
-                # Stop processing if we have reached exactly 100 games
                 if games_imported >= TARGET_IMPORT_COUNT:
                     break
 
@@ -72,7 +60,6 @@ class Command(BaseCommand):
                 rating = item.get('rating', 0)
                 ratings_count = item.get('ratings_count', 0)
 
-                # Format the release date safely
                 release_date = None
                 if released_str:
                     try:
@@ -80,25 +67,51 @@ class Command(BaseCommand):
                     except ValueError:
                         pass
 
-                # Calculate smart price based on RAWG metrics
+                # --- NEW: Fetch specific game details for Description and Developer ---
+                detail_url = f'https://api.rawg.io/api/games/{slug}?key={api_key}'
+                detail_response = requests.get(detail_url)
+
+                if detail_response.status_code == 200:
+                    detail_data = detail_response.json()
+
+                    # Get raw text description
+                    description = detail_data.get('description_raw') or detail_data.get(
+                        'description') or f"Experience {title}."
+
+                    # Extract the first developer from the array
+                    devs = detail_data.get('developers', [])
+                    if devs:
+                        dev_data = devs[0]
+                        developer, _ = Developer.objects.get_or_create(
+                            slug=dev_data.get('slug'),
+                            defaults={'name': dev_data.get('name')}
+                        )
+                    else:
+                        developer = default_developer
+                else:
+                    description = f"Experience {title}."
+                    developer = default_developer
+
+                # Be polite to the RAWG API to avoid rate limiting
+                time.sleep(0.2)
+                # ---------------------------------------------------------------------
+
                 smart_price = self.generate_smart_price(rating, ratings_count)
 
-                # Create or get the main Game object
                 game, created = Game.objects.get_or_create(
                     slug=slug,
                     defaults={
                         'title': title,
                         'category': default_category,
-                        'developer': default_developer,
+                        'developer': developer,  # Now uses the real developer
                         'price': smart_price,
-                        'description': f"Experience the incredible world of {title}. Rating: {rating}/5 based on {ratings_count} reviews.",
+                        'description': description,  # Now uses the real description
                         'cover_image_url': cover_image_url,
                         'release_date': release_date
                     }
                 )
 
                 if created:
-                    # Process and attach Genres (Many-to-Many)
                     for g_data in item.get('genres', []):
                         genre, _ = Genre.objects.get_or_create(
                             slug=g_data.get('slug'),
@@ -106,7 +119,6 @@ class Command(BaseCommand):
                         )
                         game.genres.add(genre)
 
-                    # Process and attach Platforms (Many-to-Many)
                     for p_wrapper in item.get('platforms', []):
                         p_data = p_wrapper.get('platform', {})
                         platform, _ = Platform.objects.get_or_create(
@@ -117,12 +129,14 @@ class Command(BaseCommand):
 
                     games_imported += 1
                     self.stdout.write(self.style.SUCCESS(
-                        f'[{games_imported}/{TARGET_IMPORT_COUNT}] Imported: {title} (${smart_price})'))
+                        f'[{games_imported}/{TARGET_IMPORT_COUNT}] Imported: {title} by {developer.name}'))
                 else:
-                    self.stdout.write(self.style.WARNING(f'Game already exists, skipping: {title}'))
+                    # Update existing games with the new rich description and developer data
+                    game.description = description
+                    game.developer = developer
+                    game.save()
+                    self.stdout.write(self.style.WARNING(f'Updated existing game: {title}'))
 
-            # Retrieve the URL for the next page of results
             url = data.get('next')
 
-        self.stdout.write(
-            self.style.SUCCESS(f'Import complete. Successfully added {games_imported} games to the database.'))
+        self.stdout.write(self.style.SUCCESS(f'Import complete. Successfully added/updated {games_imported} games.'))

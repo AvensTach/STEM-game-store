@@ -1,10 +1,14 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from subscriptions.serializers import UserSubscriptionSerializer
 
 class UserSerializer(serializers.ModelSerializer):
+    # Fetch the related subscription using the related_name="subscription" from the model
+    subscription = UserSubscriptionSerializer(read_only=True)
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'date_joined']
+        fields = ['id', 'username', 'email', 'date_joined', 'subscription']
 
 class RegisterSerializer(serializers.ModelSerializer):
     # Ensure password is only used for writing and never returned in API responses

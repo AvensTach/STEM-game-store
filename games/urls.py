@@ -8,5 +8,6 @@ router.register(r'developers', DeveloperViewSet)
 router.register(r'games', GameViewSet)
 
 urlpatterns = [
+    # This single line now handles /api/games/ AND /api/games/<id>/
     path('', include(router.urls)),
 ]
