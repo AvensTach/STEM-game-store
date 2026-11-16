@@ -15,8 +15,21 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # All our API endpoints will be prefixed with /api/
+    path('api/', include('games.urls')),
+    # User and authentication API endpoints will be at /api/auth/...
+    path('api/auth/', include('users.urls')),
+    path('api/subscriptions/', include('subscriptions.urls')),
+    path('api/orders/', include('orders.urls')),
+    path('api/library/', include('library.urls')), # New dedicated library route
 ]
+
+# Configuration for serving media files during development (when DEBUG=True)
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
