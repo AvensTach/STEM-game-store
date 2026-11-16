@@ -1,25 +1,31 @@
 // frontend/src/pages/Catalog.jsx
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Search, Filter, RotateCcw, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+import GameCard from '../components/GameCard';
+import GameCardSkeleton from '../components/GameCardSkeleton';
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+};
 
 export default function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isFirstRender = useRef(true);
 
-  // Data States
   const [games, setGames] = useState([]);
   const [genresList, setGenresList] = useState([]);
   const [platformsList, setPlatformsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Pagination States
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page')) || 1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
 
-  // Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedGenres, setSelectedGenres] = useState(searchParams.get('genres') ? searchParams.get('genres').split(',') : []);
@@ -29,13 +35,11 @@ export default function Catalog() {
   const [sortBy, setSortBy] = useState(searchParams.get('ordering') || '');
   const [tierLevel, setTierLevel] = useState(searchParams.get('tier_level') || '');
 
-  // Fetch available filter options once
   useEffect(() => {
     axios.get('http://127.0.0.1:8000/api/genres/').then(res => setGenresList(res.data));
     axios.get('http://127.0.0.1:8000/api/platforms/').then(res => setPlatformsList(res.data));
   }, []);
 
-  // Debounce logic for the search bar
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
@@ -43,7 +47,6 @@ export default function Catalog() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Master fetch function to handle both Page Replacing and Appending (Load More)
   const fetchGames = (pageToFetch, append = false) => {
     if (!append) setLoading(true);
 
@@ -77,7 +80,6 @@ export default function Catalog() {
       });
   };
 
-  // Trigger fetch ONLY when FILTERS change (Always resets to page 1, never appends)
   useEffect(() => {
     if (isFirstRender.current) {
       fetchGames(currentPage, false);
@@ -85,7 +87,6 @@ export default function Catalog() {
     } else {
       fetchGames(1, false);
     }
-    // We intentionally exclude fetchGames from the dependency array to prevent the infinite reload loop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch, selectedGenres, selectedPlatforms, minPrice, maxPrice, tierLevel, sortBy]);
 
@@ -105,18 +106,14 @@ export default function Catalog() {
     setSortBy('');
   };
 
-  // Pagination Handlers
   const handleLoadMore = () => fetchGames(currentPage + 1, true);
   const handlePageChange = (page) => fetchGames(page, false);
 
-  // Generate pagination numbers
   const pageNumbers = [];
   for (let i = 1; i <= totalPages; i++) pageNumbers.push(i);
 
   return (
     <div className="max-w-[1600px] w-full mx-auto py-8 flex flex-col md:flex-row gap-10">
-
-      {/* Sidebar Filters */}
       <div className="w-full md:w-64 flex-shrink-0 space-y-8 bg-slate-900 border border-slate-800 p-6 rounded-2xl h-fit sticky top-8">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-lg flex items-center gap-2"><Filter size={20}/> Filters</h3>
@@ -182,7 +179,6 @@ export default function Catalog() {
         </div>
       </div>
 
-      {/* Main Catalog Grid */}
       <div className="flex-1">
         <div className="flex justify-between items-end mb-6 border-b border-slate-800 pb-4">
           <h1 className="text-3xl font-extrabold">All Games</h1>
@@ -190,46 +186,21 @@ export default function Catalog() {
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-slate-400">Loading catalog...</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 mb-12">
+            {[1, 2, 3, 4, 5, 6].map(n => <GameCardSkeleton key={n} />)}
+          </div>
         ) : games.length === 0 ? (
           <div className="text-center py-20 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800">
             No games found matching your filters.
           </div>
         ) : (
           <>
-            {/* Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 mb-12">
-              {games.map(game => (
-                <Link to={`/game/${game.id}`} key={game.id} className="group bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden hover:border-indigo-500 transition-all flex flex-col">
-                  <div className="relative h-44 w-full bg-slate-800">
-                    <img src={game.cover_image_url} alt={game.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                    {game.minimum_subscription_tier && (
-                      <div className="absolute top-2 right-2 group/badge">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 bg-emerald-400 px-2 py-1 rounded shadow-sm cursor-help block">
-                          Included
-                        </span>
+            <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 mb-12">
+              {games.map(game => <GameCard key={game.id} game={game} />)}
+            </motion.div>
 
-                        {/* The Tooltip */}
-                        <div className="absolute top-full right-0 mt-2 w-max px-3 py-1.5 bg-slate-950 text-slate-200 text-xs font-medium rounded-lg opacity-0 group-hover/badge:opacity-100 transition-all pointer-events-none shadow-xl border border-slate-700 z-20">
-                          Requires <span className="font-bold text-emerald-400">{game.minimum_subscription_tier.name}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4 flex flex-col flex-grow">
-                    <h3 className="font-bold mb-1 line-clamp-1">{game.title}</h3>
-                    <p className="text-xs text-slate-500 mb-4">{game.developer?.name}</p>
-                    <p className="text-indigo-400 font-extrabold mt-auto text-lg">${game.price}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="flex flex-col items-center gap-6 border-t border-slate-800 pt-8">
-
-                {/* Load More Button */}
                 {currentPage < totalPages && (
                   <button
                     onClick={handleLoadMore}
@@ -239,7 +210,6 @@ export default function Catalog() {
                   </button>
                 )}
 
-                {/* Standard Page Navigation */}
                 <div className="flex items-center gap-2">
                   <button
                     disabled={currentPage === 1}
