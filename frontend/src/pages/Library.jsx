@@ -1,142 +1,188 @@
 // frontend/src/pages/Library.jsx
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
-import { Play, Search, Filter } from 'lucide-react';
+import { Play, Grid, Download, Search, Filter } from 'lucide-react';
+import { motion } from 'framer-motion';
+import Tilt from 'react-parallax-tilt';
+
+// Framer Motion Animation Variants
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+};
+
+const cardVariant = {
+  hidden: { opacity: 0, y: 30 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+};
 
 export default function Library() {
-  const [games, setGames] = useState([]);
+  const [libraryGames, setLibraryGames] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filter States
-  const [search, setSearch] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('all');
-  const [genreFilter, setGenreFilter] = useState('all');
-  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all');
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
 
-    // Fetch from your dedicated library app
     axios.get('http://127.0.0.1:8000/api/library/', {
       headers: { Authorization: `Bearer ${token}` }
     })
-    .then((res) => {
-      setGames(res.data);
-      setLoading(false);
-    })
-    .catch((err) => {
-      console.error("Error fetching library", err);
-      setLoading(false);
-    });
-  }, [navigate]);
+      .then(res => {
+        const games = res.data.results ? res.data.results : res.data;
+        setLibraryGames(games);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error fetching library:", err);
+        setLoading(false);
+      });
+  }, []);
 
-  // Extract unique genres from the user's library for the dropdown
-  const availableGenres = [...new Set(games.flatMap(game => game.genres.map(g => g.name)))].sort();
+  // Updated Client-side filtering logic with Smart Fallbacks
+  const filteredGames = libraryGames.filter(item => {
+    const game = item.game || item;
+    const matchesSearch = game.title.toLowerCase().includes(searchTerm.toLowerCase());
 
-  // Apply filters
-  const filteredGames = games.filter(game => {
-    const matchesSearch = game.title.toLowerCase().includes(search.toLowerCase());
-    const matchesSource = sourceFilter === 'all' || game.access_source === sourceFilter;
-    const matchesGenre = genreFilter === 'all' || game.genres.some(g => g.name === genreFilter);
-    return matchesSearch && matchesSource && matchesGenre;
+    let matchesType = true;
+    if (filterType === 'purchased') {
+      // Smart fallback: assume purchased if it has NO subscription tier attached
+      matchesType = item.access_type === 'purchase' || !game.minimum_subscription_tier;
+    } else if (filterType === 'subscription') {
+      // Smart fallback: assume subscription if it requires a tier
+      matchesType = item.access_type === 'subscription' || !!game.minimum_subscription_tier;
+    }
+
+    return matchesSearch && matchesType;
   });
 
-  if (loading) return <p className="text-center text-slate-400 mt-24">Loading your library...</p>;
-
   return (
-    <div className="max-w-[1600px] w-full mx-auto py-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+    <div className="max-w-[1600px] w-full mx-auto py-8 space-y-8">
+
+      {/* Header & Filter Controls */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-800 pb-6 mb-8 gap-6">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight">My Library</h1>
-          <p className="text-slate-400 mt-2">{games.length} Games Available</p>
+          <h1 className="text-4xl font-extrabold text-white mb-2 tracking-tight">My Library</h1>
+          <p className="text-slate-400">Games you own or have access to via subscription.</p>
         </div>
 
-        {/* Filters Area */}
-        <div className="flex flex-wrap gap-4 w-full md:w-auto">
-          {/* Search Box */}
-          <div className="relative flex-grow md:flex-grow-0">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" size={18} />
+        <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+
+          <div className="relative w-full md:w-64">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" size={16} />
             <input
               type="text"
               placeholder="Search library..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="bg-slate-900 border border-slate-700 text-white rounded-lg pl-10 pr-4 py-2.5 w-full focus:outline-none focus:border-indigo-500 transition-colors"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2.5 text-sm focus:border-indigo-500 outline-none text-white shadow-inner transition-colors"
             />
           </div>
 
-          {/* Access Source Filter */}
-          <select
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
-            className="bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 appearance-none cursor-pointer"
-          >
-            <option value="all">All Sources</option>
-            <option value="bought">Purchased</option>
-            <option value="subscription">Subscription</option>
-          </select>
-
-          {/* Genre Filter */}
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" size={16} />
+          <div className="relative w-full md:w-auto flex-1 md:flex-none">
+            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 pointer-events-none">
+              <Filter size={16} />
+            </div>
             <select
-              value={genreFilter}
-              onChange={(e) => setGenreFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-700 text-slate-300 rounded-lg pl-9 pr-4 py-2.5 focus:outline-none focus:border-indigo-500 appearance-none cursor-pointer"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-8 py-2.5 text-sm focus:border-indigo-500 outline-none text-white shadow-inner transition-colors cursor-pointer appearance-none"
             >
-              <option value="all">All Genres</option>
-              {availableGenres.map(genre => (
-                <option key={genre} value={genre}>{genre}</option>
-              ))}
+              <option value="all">All Games</option>
+              <option value="purchased">Purchased</option>
+              <option value="subscription">Subscription</option>
             </select>
+          </div>
+
+          <div className="text-slate-500 flex items-center justify-center gap-2 font-medium whitespace-nowrap bg-slate-900 px-4 py-2.5 rounded-lg border border-slate-800 w-full md:w-auto">
+            <Grid size={18} className="text-indigo-400" />
+            {filteredGames.length} {filteredGames.length === 1 ? 'Game' : 'Games'}
           </div>
         </div>
       </div>
 
-      {filteredGames.length === 0 ? (
-        <div className="text-center py-20 bg-slate-900/50 border border-slate-800 rounded-3xl">
-          <p className="text-slate-400 text-lg">No games found matching your filters.</p>
+      {loading ? (
+        <div className="text-center py-20 text-slate-400">Loading your games...</div>
+      ) : libraryGames.length === 0 ? (
+        <div className="text-center py-32 bg-slate-900/50 rounded-3xl border border-slate-800">
+          <h2 className="text-2xl font-bold text-slate-300 mb-4">Your library is empty</h2>
+          <p className="text-slate-500 mb-8">It's time to find your next favorite game!</p>
+          <Link to="/catalog" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-xl transition-colors">
+            Browse Catalog
+          </Link>
+        </div>
+      ) : filteredGames.length === 0 ? (
+        <div className="text-center py-32 bg-slate-900/50 rounded-3xl border border-slate-800">
+          <h2 className="text-2xl font-bold text-slate-300 mb-2">No matches found</h2>
+          <p className="text-slate-500">Try adjusting your search term or filter.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredGames.map((game) => (
-            <Link
-              to={`/game/${game.id}`}
-              key={game.id}
-              className="group bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden hover:border-indigo-500/50 transition-all duration-300 flex flex-col"
-            >
-              <div className="relative h-40 w-full bg-slate-800">
-                <img src={game.cover_image_url} alt={game.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
 
-                {/* Visual indicator of how they own it */}
-                <div className="absolute top-3 right-3">
-                  {game.access_source === 'bought' ? (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-100 bg-indigo-600/90 backdrop-blur-sm px-2 py-1 rounded shadow-sm border border-indigo-500">
-                      Purchased
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 bg-emerald-400/90 backdrop-blur-sm px-2 py-1 rounded shadow-sm">
-                      Subscription
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="p-4 flex flex-col flex-grow">
-                <h3 className="font-bold mb-1 truncate">{game.title}</h3>
-                <p className="text-xs text-slate-500 mb-4">{game.developer?.name || 'Unknown'}</p>
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+        >
+          {filteredGames.map(item => {
+            const game = item.game || item;
 
-                <button className="mt-auto flex items-center justify-center gap-2 w-full bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 text-sm font-bold py-2 rounded-lg transition-colors cursor-pointer">
-                  <Play size={16} fill="currentColor" /> Play
-                </button>
-              </div>
-            </Link>
-          ))}
-        </div>
+            return (
+              <motion.div key={game.id} variants={cardVariant} className="h-full">
+                <Tilt
+                  tiltMaxAngleX={8}
+                  tiltMaxAngleY={8}
+                  glareEnable={true}
+                  glareMaxOpacity={0.15}
+                  scale={1.02}
+                  transitionSpeed={400}
+                  className="h-full"
+                >
+                  <div className="group bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden hover:border-emerald-500 transition-colors flex flex-col h-full shadow-lg relative cursor-pointer">
+
+                    <Link to={`/game/${game.id}`} className="relative h-48 w-full bg-slate-800 flex-shrink-0 block overflow-hidden">
+                      <img
+                        src={game.cover_image_url}
+                        alt={game.title}
+                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                      />
+
+                      {/* Updated Access Badge with Smart Fallback */}
+                      <div className="absolute top-2 right-2">
+                        {item.access_type === 'subscription' || !!game.minimum_subscription_tier ? (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-900 bg-indigo-400 px-2 py-1 rounded shadow-sm">
+                            Subscription
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 bg-emerald-400 px-2 py-1 rounded shadow-sm">
+                            Owned
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm z-10">
+                        <button className="bg-emerald-500 text-white p-4 rounded-full shadow-lg shadow-emerald-900/50 transform scale-75 group-hover:scale-100 transition-all duration-300">
+                          <Play fill="currentColor" size={24} />
+                        </button>
+                      </div>
+                    </Link>
+
+                    <div className="p-5 flex flex-col flex-grow bg-slate-900">
+                      <h3 className="font-bold text-lg truncate mb-1 text-white">{game.title}</h3>
+                      <p className="text-sm text-slate-500 mb-5">{game.developer?.name || 'Unknown Developer'}</p>
+
+                      <button className="mt-auto w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 rounded-lg transition-colors border border-slate-700 hover:border-slate-600">
+                        <Download size={16} /> Install
+                      </button>
+                    </div>
+                  </div>
+                </Tilt>
+              </motion.div>
+            );
+          })}
+        </motion.div>
       )}
     </div>
   );

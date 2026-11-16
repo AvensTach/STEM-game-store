@@ -12,10 +12,13 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "axios": "^1.20.0",
-    "framer-motion": "^14.6.0",
+    "fast-average-color": "^9.6.0",
+    "framer-motion": "^14.14.0",
     "lucide-react": "^1.61.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "react-hot-toast": "^2.6.1",
+    "react-parallax-tilt": "^1.7.352",
     "react-router-dom": "^7.18.4",
     "tailwindcss": "^4.3.3"
   },
